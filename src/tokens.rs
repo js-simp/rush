@@ -7,9 +7,9 @@ args are every term that follows separated by a whitespace after the main comman
 
 #[derive(Debug, PartialEq)]
 pub struct Tokens {
-    main_com : String,
-    args : Vec<String>,
-    in_background : bool
+    pub main_com : String,
+    pub args : Vec<String>,
+    pub in_background : bool
 }
 
 impl Tokens {

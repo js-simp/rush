@@ -12,6 +12,7 @@ mod colors;
 mod tokens;
 
 use tokens::tokenize_commands;
+use tokens::Tokens;
 
 fn main() {
     unsafe {
@@ -25,37 +26,30 @@ fn main() {
         println!("No previous history.");
         File::create(format!("{}/.rush_history", home)).expect("Couldn't create history file");
     }
-    // loop {
-    //     let prompt_string = generate_prompt(last_exit_status);
-    //     let command_string = read_command(&mut rl, prompt_string);
-    //     let commands = tokenize_commands(&command_string);
+    loop {
+        let prompt_string = generate_prompt(last_exit_status);
+        let command_string = read_command(&mut rl, prompt_string);
+        let commands = tokenize_commands(&command_string);
 
-    //     for mut command in commands {
-    //         last_exit_status = true;
-    //         for mut dependent_command in command {
-    //             let mut is_background = false;
-    //             if let Some(&"&") = dependent_command.last() {
-    //                 is_background = true;
-    //                 dependent_command.pop();
-    //             }
-    //             match dependent_command[0] {
-    //                 "exit" => {
-    //                     rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
-    //                     std::process::exit(0);
-    //                 },
-    //                 "cd" => {
-    //                     last_exit_status = change_dir(dependent_command[1]);
-    //                 }
-    //                 _ => {
-    //                     last_exit_status = execute_command(dependent_command, is_background);
-    //                 }
-    //             }
-    //             if last_exit_status == false {
-    //                 break;
-    //             }
-    //         }
-    //     }
-    // }
+        for mut command in commands {
+            last_exit_status = true;
+            match command.main_com.as_str() {
+                "exit" => {
+                    rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
+                    std::process::exit(0);
+                },
+                "cd" => {
+                    last_exit_status = change_dir(command.args[0].as_str());
+                },
+                _ => {
+                    last_exit_status = execute_command(command);
+                }
+            }
+            if last_exit_status == false {
+                break;
+            }
+        }
+    }
 }
 
 fn read_command(rl: &mut Editor<()>, prompt_string: String) -> String {
@@ -101,10 +95,10 @@ fn generate_prompt(last_exit_status: bool) -> String {
     }
 }
 
-fn execute_command(command_tokens: Vec<&str>, is_background: bool) -> bool {
-    let mut command_instance = Command::new(command_tokens[0]);
+fn execute_command(command_tokens: Tokens) -> bool {
+    let mut command_instance = Command::new(command_tokens.main_com.as_str());
     if let Ok(mut child) = command_instance
-        .args(&command_tokens[1..])
+        .args(command_tokens.args)
         .before_exec(|| {
             unsafe {
                 libc::signal(libc::SIGINT, libc::SIG_DFL);
@@ -114,7 +108,7 @@ fn execute_command(command_tokens: Vec<&str>, is_background: bool) -> bool {
         })
         .spawn()
     {
-        if is_background == false {
+        if command_tokens.in_background == false {
             return child.wait().expect("command wasn't running").success();
         } else {
             colors::success_logger(format!("{} started!", child.id()));
