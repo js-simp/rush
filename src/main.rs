@@ -25,37 +25,37 @@ fn main() {
         println!("No previous history.");
         File::create(format!("{}/.rush_history", home)).expect("Couldn't create history file");
     }
-    loop {
-        let prompt_string = generate_prompt(last_exit_status);
-        let command_string = read_command(&mut rl, prompt_string);
-        let commands = tokenize_commands(&command_string);
+    // loop {
+    //     let prompt_string = generate_prompt(last_exit_status);
+    //     let command_string = read_command(&mut rl, prompt_string);
+    //     let commands = tokenize_commands(&command_string);
 
-        for mut command in commands {
-            last_exit_status = true;
-            for mut dependent_command in command {
-                let mut is_background = false;
-                if let Some(&"&") = dependent_command.last() {
-                    is_background = true;
-                    dependent_command.pop();
-                }
-                match dependent_command[0] {
-                    "exit" => {
-                        rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
-                        std::process::exit(0);
-                    },
-                    "cd" => {
-                        last_exit_status = change_dir(dependent_command[1]);
-                    }
-                    _ => {
-                        last_exit_status = execute_command(dependent_command, is_background);
-                    }
-                }
-                if last_exit_status == false {
-                    break;
-                }
-            }
-        }
-    }
+    //     for mut command in commands {
+    //         last_exit_status = true;
+    //         for mut dependent_command in command {
+    //             let mut is_background = false;
+    //             if let Some(&"&") = dependent_command.last() {
+    //                 is_background = true;
+    //                 dependent_command.pop();
+    //             }
+    //             match dependent_command[0] {
+    //                 "exit" => {
+    //                     rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
+    //                     std::process::exit(0);
+    //                 },
+    //                 "cd" => {
+    //                     last_exit_status = change_dir(dependent_command[1]);
+    //                 }
+    //                 _ => {
+    //                     last_exit_status = execute_command(dependent_command, is_background);
+    //                 }
+    //             }
+    //             if last_exit_status == false {
+    //                 break;
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 fn read_command(rl: &mut Editor<()>, prompt_string: String) -> String {
