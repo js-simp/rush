@@ -32,26 +32,28 @@ impl Tokens {
 pub fn tokenize_commands(command_string : &str) -> Vec<Tokens> {
     let mut commands: Vec<Tokens> = vec![];
     for independent_com in command_string.split(';') {
-        let mut processes : Vec<&str> = independent_com.trim().split(" & ").collect();
-        let foreground = processes.pop(); 
-        for background_process in processes {
-            if background_process != "" {
-                commands.push(Tokens::new(background_process, true));
+        for dependent_coms in independent_com.split("&&"){
+            let mut processes : Vec<&str> = dependent_coms.trim().split(" & ").collect();
+            let foreground = processes.pop(); 
+            for background_process in processes {
+                if background_process != "" {
+                    commands.push(Tokens::new(background_process, true));
+                }
             }
-        }
-        match foreground {
-            Some(str) => 
-            if str.ends_with('&') { 
-                let mut chars = str.chars();
-                chars.next_back();
-                let str_b = chars.as_str();
-                commands.push(Tokens::new(str_b, true))
+            match foreground {
+                Some(str) => 
+                if str.ends_with('&') { 
+                    let mut chars = str.chars();
+                    chars.next_back();
+                    let str_b = chars.as_str();
+                    commands.push(Tokens::new(str_b, true))
+                }
+                else if str != "" {commands.push(Tokens::new(str, false))}
+                else {}
+                ,
+                None => ()
             }
-            else if str != "" {commands.push(Tokens::new(str, false))}
-            else {}
-            ,
-            None => ()
-        }
+            }
         
     }
     commands
@@ -123,7 +125,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("date"), args: vec![String::from("&&"), String::from("ls")], in_background : false}, 
+            Tokens {main_com : String::from("date"), args: vec![], in_background:false}, Tokens{main_com : String::from("ls"), args: vec![], in_background : false} 
             ], tokens);
     }
 }
