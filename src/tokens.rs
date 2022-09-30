@@ -5,7 +5,6 @@ Independent commands that finish with '&' run in the background
 args are every term that follows separated by a whitespace after the main command
 */
 
-
 #[derive(Debug, PartialEq)]
 pub struct Tokens {
     main_com : String,
