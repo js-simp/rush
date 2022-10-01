@@ -9,6 +9,7 @@ An experimental shell, developed to gain a little experience with Rust and unix 
 - `cd` command
 - `;` implementation
 - `&&` implementation
+- `||` implementation
 - Simple signal handling
 - Command Support
 
