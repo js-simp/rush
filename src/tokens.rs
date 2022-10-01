@@ -1,7 +1,15 @@
-/*How to tokenize
-first breakdown the command string into independent commands by splitting at separator ';'
-Independent commands that finish with '&' run in the background
-args are every term that follows separated by a whitespace after the main command
+/*
+ * How to tokenize
+ * 1) breakdown the command string into independent commands
+ * by splitting at separator ';'
+ * 2) breakdown the independent commands into dependent_commands
+ * by splitting at separator "&&"
+ * 3) breakdown background commands
+ * by splitting at separator " & "
+ *
+ * Independent commands that finish with '&' run in the background
+ * args are every term that follows
+ * separated by a whitespace after the main command
 */
 
 #[derive(Debug, PartialEq)]
@@ -13,23 +21,20 @@ pub struct Tokens {
 }
 
 impl Tokens {
+    // TODO: what if command is_empty() ?
     fn new(command: &str, in_background: bool) -> Tokens {
         let dep_coms = command.split_once("||");
-        let initial_com;
 
-        let or_com = match dep_coms {
-            Some(dep_com) => {
-                initial_com = dep_com.0; //extract first command
-                Some(Box::new(Tokens::new(dep_com.1, in_background)))
-            }
-            None => {
-                initial_com = command;
-                None
-            }
+        let (initial_com, or_com) = if let Some(dep_com) = dep_coms {
+            let tok = Some(Box::new(Tokens::new(dep_com.1, in_background)));
+            (dep_com.0, tok)
+        } else {
+            (command, None)
         };
 
         let mut parts = initial_com.split_whitespace();
-        let main_com = String::from(parts.next().unwrap());
+        let main_com = String::from(parts.next().expect("Unexpected empty parts"));
+
         let mut args = vec![];
         for arg in parts {
             args.push(String::from(arg));
@@ -45,7 +50,7 @@ impl Tokens {
 }
 
 pub fn tokenize_commands(command_string: &str) -> Vec<Tokens> {
-    let mut commands: Vec<Tokens> = vec![];
+    let mut commands = vec![];
 
     for independent_com in command_string.split(';') {
         for dependent_coms in independent_com.split("&&") {
