@@ -9,12 +9,20 @@ args are every term that follows separated by a whitespace after the main comman
 pub struct Tokens {
     pub main_com : String,
     pub args : Vec<String>,
+    pub or_coms : Vec<Tokens>,
     pub in_background : bool
 }
 
 impl Tokens {
     fn new(command : &str, in_background : bool) -> Tokens {
-        let mut parts = command.split_whitespace();
+
+        let mut dep_coms = command.split("||");
+        let initial_com = dep_coms.next().unwrap(); //extract first command
+        let mut or_coms : Vec<Tokens> = vec![];
+        for or_com in dep_coms {
+            or_coms.push(Tokens::new(or_com, in_background));
+        }
+        let mut parts = initial_com.split_whitespace();
         let main_com = String::from(parts.next().unwrap());
         let mut args = vec![];
         for arg in parts {
@@ -24,6 +32,7 @@ impl Tokens {
         Tokens {
             main_com,
             args,
+            or_coms,
             in_background
         }
     }
@@ -32,7 +41,7 @@ impl Tokens {
 pub fn tokenize_commands(command_string : &str) -> Vec<Tokens> {
     let mut commands: Vec<Tokens> = vec![];
     for independent_com in command_string.split(';') {
-        for dependent_coms in independent_com.split("&&"){
+        for dependent_coms in independent_com.split("&&") {
             let mut processes : Vec<&str> = dependent_coms.trim().split(" & ").collect();
             let foreground = processes.pop(); 
             for background_process in processes {
@@ -52,8 +61,8 @@ pub fn tokenize_commands(command_string : &str) -> Vec<Tokens> {
                 else {}
                 ,
                 None => ()
-            }
-            }
+            }    
+        }
         
     }
     commands
@@ -69,7 +78,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("ls"), args : vec![], in_background : false}
+            Tokens {main_com : String::from("ls"), args : vec![], or_coms : vec![], in_background : false}
             ], tokens);
     }
 
@@ -79,7 +88,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("ls"), args : vec![String::from("-a")], in_background : false}
+            Tokens {main_com : String::from("ls"), args : vec![String::from("-a")], or_coms : vec![], in_background : false}
             ], tokens);
     }
 
@@ -89,7 +98,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("long-running-process"), args : vec![], in_background : true}
+            Tokens {main_com : String::from("long-running-process"), args : vec![], or_coms : vec![], in_background : true}
             ], tokens);
     }
 
@@ -102,9 +111,9 @@ mod tests {
         // it should be `assert_eq!(vec![vec![vec!["long-running-process &"]], vec![vec!["date"]]], tokens);`
         assert_eq!(vec![
             Tokens {
-            main_com : String::from("long-running-process"), args: vec![], in_background : true
+            main_com : String::from("long-running-process"), args: vec![], or_coms : vec![], in_background : true
             }, 
-            Tokens {main_com : String::from("date"), args : vec![], in_background: false}
+            Tokens {main_com : String::from("date"), args : vec![], or_coms: vec![], in_background: false}
             ], tokens);
     }
 
@@ -114,8 +123,8 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("date"), args: vec![], in_background : false}, 
-            Tokens {main_com : String::from("ls"), args: vec![], in_background : false}
+            Tokens {main_com : String::from("date"), args: vec![], or_coms: vec![],  in_background : false}, 
+            Tokens {main_com : String::from("ls"), args: vec![], or_coms: vec![], in_background : false}
             ], tokens);
     }
 
@@ -125,7 +134,29 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("date"), args: vec![], in_background:false}, Tokens{main_com : String::from("ls"), args: vec![], in_background : false} 
+            Tokens {main_com : String::from("date"), args: vec![], or_coms : vec![], in_background:false},
+            Tokens {main_com : String::from("ls"), args: vec![], or_coms : vec![], in_background:false} 
+            ], tokens);
+    }
+
+    #[test]
+    fn and_or() {
+        let commands = "date && ls || ls";
+        let tokens = tokenize_commands(commands);
+
+        assert_eq!(vec![
+            Tokens {
+                main_com : String::from("date"), 
+                args: vec![], 
+                or_coms : vec![], 
+                in_background:false
+            },
+            Tokens {
+                main_com : String::from("ls"),
+                args : vec![],
+                or_coms : vec![Tokens {main_com : String::from("ls"), args : vec![], or_coms : vec![], in_background : false}],
+                in_background : false
+            }  
             ], tokens);
     }
 }
