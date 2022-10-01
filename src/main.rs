@@ -2,10 +2,11 @@ extern crate libc;
 extern crate rustyline;
 
 use std::env;
+use std::fs::File;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
-use std::fs::File;
+
 use rustyline::Editor;
 
 mod colors;
@@ -34,15 +35,12 @@ fn main() {
         for command in commands {
             last_exit_status = match command.main_com.as_str() {
                 "exit" => {
-                    rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
+                    rl.save_history(&format!("{}/.rush_history", home))
+                        .expect("Couldn't save history");
                     std::process::exit(0);
-                },
-                "cd" => {
-                    change_dir(command.args[0].as_str())
-                },
-                _ => {
-                    execute_command(command)
                 }
+                "cd" => change_dir(command.args[0].as_str()),
+                _ => execute_command(command),
             };
             if last_exit_status == false {
                 break;
@@ -97,29 +95,27 @@ fn generate_prompt(last_exit_status: bool) -> String {
 fn execute_command(command_tokens: Tokens) -> bool {
     let mut command_instance = Command::new(command_tokens.main_com.as_str());
     let or_com = command_tokens.or_com;
-    if let Ok(mut child) = unsafe {command_instance
-        .args(command_tokens.args)
-        .pre_exec(|| {
+    if let Ok(mut child) = unsafe {
+        command_instance.args(command_tokens.args).pre_exec(|| {
             libc::signal(libc::SIGINT, libc::SIG_DFL);
             libc::signal(libc::SIGQUIT, libc::SIG_DFL);
             Result::Ok(())
-        })}
-        .spawn()
+        })
+    }
+    .spawn()
     {
         if command_tokens.in_background == false {
             if child.wait().expect("command wasn't running").success() {
-                return true
-            }
-            else {
+                return true;
+            } else {
                 if or_com != None {
                     match or_com {
-                        Some(token) => { return execute_command(*token)},
-                        None => return false
+                        Some(token) => return execute_command(*token),
+                        None => return false,
                     }
                     // return execute_command(or_com)
-                }
-                else {
-                    return false
+                } else {
+                    return false;
                 }
             };
         } else {
