@@ -16,8 +16,8 @@ pub struct Tokens {
 impl Tokens {
     fn new(command : &str, in_background : bool) -> Tokens {
 
-        let mut dep_coms = command.split_once("||");
-        let mut initial_com;
+        let dep_coms = command.split_once("||");
+        let initial_com;
 
         let or_com = match dep_coms {
             Some(dep_com) => {
