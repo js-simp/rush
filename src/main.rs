@@ -31,20 +31,19 @@ fn main() {
         let command_string = read_command(&mut rl, prompt_string);
         let commands = tokenize_commands(&command_string);
 
-        for mut command in commands {
-            last_exit_status = true;
-            match command.main_com.as_str() {
+        for command in commands {
+            last_exit_status = match command.main_com.as_str() {
                 "exit" => {
                     rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
                     std::process::exit(0);
                 },
                 "cd" => {
-                    last_exit_status = change_dir(command.args[0].as_str());
+                    change_dir(command.args[0].as_str())
                 },
                 _ => {
-                    last_exit_status = execute_command(command);
+                    execute_command(command)
                 }
-            }
+            };
             if last_exit_status == false {
                 break;
             }
@@ -98,15 +97,13 @@ fn generate_prompt(last_exit_status: bool) -> String {
 fn execute_command(command_tokens: Tokens) -> bool {
     let mut command_instance = Command::new(command_tokens.main_com.as_str());
     let or_com = command_tokens.or_com;
-    if let Ok(mut child) = command_instance
+    if let Ok(mut child) = unsafe {command_instance
         .args(command_tokens.args)
-        .before_exec(|| {
-            unsafe {
-                libc::signal(libc::SIGINT, libc::SIG_DFL);
-                libc::signal(libc::SIGQUIT, libc::SIG_DFL);
-            }
+        .pre_exec(|| {
+            libc::signal(libc::SIGINT, libc::SIG_DFL);
+            libc::signal(libc::SIGQUIT, libc::SIG_DFL);
             Result::Ok(())
-        })
+        })}
         .spawn()
     {
         if command_tokens.in_background == false {
