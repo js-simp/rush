@@ -97,6 +97,7 @@ fn generate_prompt(last_exit_status: bool) -> String {
 
 fn execute_command(command_tokens: Tokens) -> bool {
     let mut command_instance = Command::new(command_tokens.main_com.as_str());
+    let or_com = command_tokens.or_com;
     if let Ok(mut child) = command_instance
         .args(command_tokens.args)
         .before_exec(|| {
@@ -109,7 +110,21 @@ fn execute_command(command_tokens: Tokens) -> bool {
         .spawn()
     {
         if command_tokens.in_background == false {
-            return child.wait().expect("command wasn't running").success();
+            if child.wait().expect("command wasn't running").success() {
+                return true
+            }
+            else {
+                if or_com != None {
+                    match or_com {
+                        Some(token) => { return execute_command(*token)},
+                        None => return false
+                    }
+                    // return execute_command(or_com)
+                }
+                else {
+                    return false
+                }
+            };
         } else {
             colors::success_logger(format!("{} started!", child.id()));
             true

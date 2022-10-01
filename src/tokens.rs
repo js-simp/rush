@@ -9,19 +9,24 @@ args are every term that follows separated by a whitespace after the main comman
 pub struct Tokens {
     pub main_com : String,
     pub args : Vec<String>,
-    pub or_coms : Vec<Tokens>,
+    pub or_com : Option<Box<Tokens>>,
     pub in_background : bool
 }
 
 impl Tokens {
     fn new(command : &str, in_background : bool) -> Tokens {
 
-        let mut dep_coms = command.split("||");
-        let initial_com = dep_coms.next().unwrap(); //extract first command
-        let mut or_coms : Vec<Tokens> = vec![];
-        for or_com in dep_coms {
-            or_coms.push(Tokens::new(or_com, in_background));
-        }
+        let mut dep_coms = command.split_once("||");
+        let mut initial_com;
+
+        let or_com = match dep_coms {
+            Some(dep_com) => {
+                initial_com = dep_com.0; //extract first command
+                Some(Box::new(Tokens::new(dep_com.1, in_background)))
+            },
+            None => { initial_com = command; None}
+        };
+        
         let mut parts = initial_com.split_whitespace();
         let main_com = String::from(parts.next().unwrap());
         let mut args = vec![];
@@ -32,7 +37,7 @@ impl Tokens {
         Tokens {
             main_com,
             args,
-            or_coms,
+            or_com,
             in_background
         }
     }
@@ -78,7 +83,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("ls"), args : vec![], or_coms : vec![], in_background : false}
+            Tokens {main_com : String::from("ls"), args : vec![], or_com : None, in_background : false}
             ], tokens);
     }
 
@@ -88,7 +93,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("ls"), args : vec![String::from("-a")], or_coms : vec![], in_background : false}
+            Tokens {main_com : String::from("ls"), args : vec![String::from("-a")], or_com : None, in_background : false}
             ], tokens);
     }
 
@@ -98,7 +103,7 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("long-running-process"), args : vec![], or_coms : vec![], in_background : true}
+            Tokens {main_com : String::from("long-running-process"), args : vec![], or_com : None, in_background : true}
             ], tokens);
     }
 
@@ -111,9 +116,9 @@ mod tests {
         // it should be `assert_eq!(vec![vec![vec!["long-running-process &"]], vec![vec!["date"]]], tokens);`
         assert_eq!(vec![
             Tokens {
-            main_com : String::from("long-running-process"), args: vec![], or_coms : vec![], in_background : true
+            main_com : String::from("long-running-process"), args: vec![], or_com : None, in_background : true
             }, 
-            Tokens {main_com : String::from("date"), args : vec![], or_coms: vec![], in_background: false}
+            Tokens {main_com : String::from("date"), args : vec![], or_com : None, in_background: false}
             ], tokens);
     }
 
@@ -123,8 +128,8 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("date"), args: vec![], or_coms: vec![],  in_background : false}, 
-            Tokens {main_com : String::from("ls"), args: vec![], or_coms: vec![], in_background : false}
+            Tokens {main_com : String::from("date"), args: vec![], or_com : None,  in_background : false}, 
+            Tokens {main_com : String::from("ls"), args: vec![], or_com : None, in_background : false}
             ], tokens);
     }
 
@@ -134,8 +139,8 @@ mod tests {
         let tokens = tokenize_commands(commands);
 
         assert_eq!(vec![
-            Tokens {main_com : String::from("date"), args: vec![], or_coms : vec![], in_background:false},
-            Tokens {main_com : String::from("ls"), args: vec![], or_coms : vec![], in_background:false} 
+            Tokens {main_com : String::from("date"), args: vec![], or_com : None, in_background:false},
+            Tokens {main_com : String::from("ls"), args: vec![], or_com : None, in_background:false} 
             ], tokens);
     }
 
@@ -148,13 +153,13 @@ mod tests {
             Tokens {
                 main_com : String::from("date"), 
                 args: vec![], 
-                or_coms : vec![], 
+                or_com : None, 
                 in_background:false
             },
             Tokens {
                 main_com : String::from("ls"),
                 args : vec![],
-                or_coms : vec![Tokens {main_com : String::from("ls"), args : vec![], or_coms : vec![], in_background : false}],
+                or_com : Some(Box::new(Tokens {main_com : String::from("ls"), args : vec![], or_com : None, in_background : false})),
                 in_background : false
             }  
             ], tokens);
