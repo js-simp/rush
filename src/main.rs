@@ -12,6 +12,7 @@ mod colors;
 mod tokens;
 
 use tokens::tokenize_commands;
+use tokens::Tokens;
 
 fn main() {
     unsafe {
@@ -32,27 +33,20 @@ fn main() {
 
         for mut command in commands {
             last_exit_status = true;
-            for mut dependent_command in command {
-                let mut is_background = false;
-                if let Some(&"&") = dependent_command.last() {
-                    is_background = true;
-                    dependent_command.pop();
+            match command.main_com.as_str() {
+                "exit" => {
+                    rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
+                    std::process::exit(0);
+                },
+                "cd" => {
+                    last_exit_status = change_dir(command.args[0].as_str());
+                },
+                _ => {
+                    last_exit_status = execute_command(command);
                 }
-                match dependent_command[0] {
-                    "exit" => {
-                        rl.save_history(&format!("{}/.rush_history", home)).expect("Couldn't save history");
-                        std::process::exit(0);
-                    },
-                    "cd" => {
-                        last_exit_status = change_dir(dependent_command[1]);
-                    }
-                    _ => {
-                        last_exit_status = execute_command(dependent_command, is_background);
-                    }
-                }
-                if last_exit_status == false {
-                    break;
-                }
+            }
+            if last_exit_status == false {
+                break;
             }
         }
     }
@@ -101,10 +95,11 @@ fn generate_prompt(last_exit_status: bool) -> String {
     }
 }
 
-fn execute_command(command_tokens: Vec<&str>, is_background: bool) -> bool {
-    let mut command_instance = Command::new(command_tokens[0]);
+fn execute_command(command_tokens: Tokens) -> bool {
+    let mut command_instance = Command::new(command_tokens.main_com.as_str());
+    let or_com = command_tokens.or_com;
     if let Ok(mut child) = command_instance
-        .args(&command_tokens[1..])
+        .args(command_tokens.args)
         .before_exec(|| {
             unsafe {
                 libc::signal(libc::SIGINT, libc::SIG_DFL);
@@ -114,8 +109,22 @@ fn execute_command(command_tokens: Vec<&str>, is_background: bool) -> bool {
         })
         .spawn()
     {
-        if is_background == false {
-            return child.wait().expect("command wasn't running").success();
+        if command_tokens.in_background == false {
+            if child.wait().expect("command wasn't running").success() {
+                return true
+            }
+            else {
+                if or_com != None {
+                    match or_com {
+                        Some(token) => { return execute_command(*token)},
+                        None => return false
+                    }
+                    // return execute_command(or_com)
+                }
+                else {
+                    return false
+                }
+            };
         } else {
             colors::success_logger(format!("{} started!", child.id()));
             true
