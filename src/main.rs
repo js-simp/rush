@@ -42,7 +42,7 @@ fn main() {
                 "cd" => change_dir(command.args[0].as_str()),
                 _ => execute_command(command),
             };
-            if last_exit_status == false {
+            if !last_exit_status {
                 break;
             }
         }
@@ -53,7 +53,7 @@ fn read_command(rl: &mut Editor<()>, prompt_string: String) -> String {
     let mut command_string = rl.readline(&prompt_string).unwrap();
 
     // this allows for multiline commands
-    while command_string.chars().last() == Some('\\') {
+    while command_string.ends_with('\\') {
         command_string.pop(); // remove the trailing backslash
         let next_string = rl.readline("").unwrap();
         command_string.push_str(&next_string);
@@ -74,21 +74,21 @@ fn generate_prompt(last_exit_status: bool) -> String {
         colors::RESET
     );
     if last_exit_status {
-        return format!(
+        format!(
             "{}{}{}\u{2ba1}{}  ",
             prompt,
             colors::ANSI_BOLD,
             colors::GREEN,
             colors::RESET
-        );
+        )
     } else {
-        return format!(
+        format!(
             "{}{}{}\u{2ba1}{}  ",
             prompt,
             colors::ANSI_BOLD,
             colors::RED,
             colors::RESET
-        );
+        )
     }
 }
 
@@ -104,20 +104,15 @@ fn execute_command(command_tokens: Tokens) -> bool {
     }
     .spawn()
     {
-        if command_tokens.in_background == false {
+        if !command_tokens.in_background {
             if child.wait().expect("command wasn't running").success() {
-                return true;
+                true
+            } else if let Some(token) = or_com {
+                execute_command(*token)
             } else {
-                if or_com != None {
-                    match or_com {
-                        Some(token) => return execute_command(*token),
-                        None => return false,
-                    }
-                    // return execute_command(or_com)
-                } else {
-                    return false;
-                }
-            };
+                // return execute_command(or_com)
+                false
+            }
         } else {
             colors::success_logger(format!("{} started!", child.id()));
             true
@@ -130,12 +125,10 @@ fn execute_command(command_tokens: Tokens) -> bool {
 
 fn change_dir(new_path: &str) -> bool {
     let new_path = Path::new(new_path);
-    match env::set_current_dir(&new_path) {
-        Err(err) => {
-            colors::error_logger(format!("Failed to change the directory!\n{}", err));
-            return false;
-        }
-        _ => (),
+    if let Err(err) = env::set_current_dir(&new_path) {
+        colors::error_logger(format!("Failed to change the directory!\n{}", err));
+        false
+    } else {
+        true
     }
-    return true;
 }

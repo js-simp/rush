@@ -46,28 +46,27 @@ impl Tokens {
 
 pub fn tokenize_commands(command_string: &str) -> Vec<Tokens> {
     let mut commands: Vec<Tokens> = vec![];
+
     for independent_com in command_string.split(';') {
         for dependent_coms in independent_com.split("&&") {
             let mut processes: Vec<&str> = dependent_coms.trim().split(" & ").collect();
             let foreground = processes.pop();
+
             for background_process in processes {
-                if background_process != "" {
+                if !background_process.is_empty() {
                     commands.push(Tokens::new(background_process, true));
                 }
             }
-            match foreground {
-                Some(str) => {
-                    if str.ends_with('&') {
-                        let mut chars = str.chars();
-                        chars.next_back();
-                        let str_b = chars.as_str();
-                        commands.push(Tokens::new(str_b, true))
-                    } else if str != "" {
-                        commands.push(Tokens::new(str, false))
-                    } else {
-                    }
+
+            if let Some(s) = foreground {
+                if s.ends_with('&') {
+                    let mut chars = s.chars();
+                    chars.next_back();
+                    let str_b = chars.as_str();
+                    commands.push(Tokens::new(str_b, true));
+                } else if !s.is_empty() {
+                    commands.push(Tokens::new(s, false));
                 }
-                None => (),
             }
         }
     }
