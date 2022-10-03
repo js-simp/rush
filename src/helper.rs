@@ -1,19 +1,18 @@
-use colored::Colorize;
-use rustyline::completion::{Completer, Pair, Candidate};
+use rustyline::completion::{Completer, Pair};
 use rustyline_derive::{Helper, Validator, Hinter};
 use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
-use rustyline::{Context, ConditionalEventHandler, KeyEvent, EventContext, RepeatCount, Event, Cmd};
-use std::borrow::Cow::{self, Borrowed, Owned};
+use rustyline::{Context};
+use std::borrow::Cow::{self, Owned};
 use rustyline::hint::HistoryHinter;
 
 #[derive(Helper, Validator, Hinter)]
 pub struct MyHelper {
     pub highlighter: MatchingBracketHighlighter,
-    #[rustyline(Hinter)]
-    pub hinter: HistoryHinter,
+    // #[rustyline(Hinter)]
+    // pub hinter: HistoryHinter,
 }
 impl Highlighter for MyHelper {
-    
+
     fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
         Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
     }
@@ -45,8 +44,8 @@ impl Completer for MyHelper {
                         // FIXME move this to highlight_candidate when that accepts a completion::Candidate
                         display: format!(
                             "{}{}",
-                            &candidate[..pos].green(),
-                            &candidate[pos..].bright_green().bold()
+                            &candidate[..pos],
+                            &candidate[pos..]
                         ),
                         replacement: if candidates.len() == 1 {
                             format!("{} ", &candidate[pos..])
@@ -59,28 +58,12 @@ impl Completer for MyHelper {
             
     }
 }
-pub struct TabEventHandler;
-impl ConditionalEventHandler for TabEventHandler {
-    fn handle(&self, evt: &Event, n: RepeatCount, _: bool, ctx: &EventContext) -> Option<Cmd> {
-        debug_assert_eq!(*evt, Event::from(KeyEvent::from('\t')));
-        if ctx.line()[..ctx.pos()]
-            .chars()
-            .rev()
-            .next()
-            .filter(|c| c.is_whitespace())
-            .is_some()
-        {
-            Some(Cmd::SelfInsert(n, '\t'))
-        } else {
-            None // default complete
-        }
-    }
-}
+
 impl MyHelper {
     pub fn new() -> MyHelper {
         MyHelper{
             highlighter : MatchingBracketHighlighter::new(),
-            hinter : HistoryHinter {}
+            // hinter : HistoryHinter {}
         }
     }
 }

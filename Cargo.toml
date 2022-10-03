@@ -7,4 +7,3 @@ authors = ["psinghal20 <psinghal20@gmail.com>"]
 libc = "0.2"
 rustyline = "10.0.0"
 rustyline-derive = "0.7.0"
-colored = "2.0"

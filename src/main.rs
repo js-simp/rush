@@ -1,7 +1,6 @@
 extern crate libc;
 extern crate rustyline;
 extern crate rustyline_derive;
-extern crate colored;
 
 use std::env;
 use std::os::unix::process::CommandExt;
@@ -9,7 +8,7 @@ use std::path::Path;
 use std::process::Command;
 use std::fs::File;
 
-use rustyline::{Editor, KeyEvent, EventHandler};
+use rustyline::{Editor};
 
 mod colors;
 mod tokens;
@@ -17,7 +16,7 @@ mod helper;
 
 use tokens::tokenize_commands;
 use tokens::Tokens;
-use helper::{MyHelper, TabEventHandler};
+use helper::{MyHelper};
 
 
 fn main() {
@@ -29,10 +28,6 @@ fn main() {
     let mut last_exit_status = true;
     let mut rl = Editor::<MyHelper>::new().unwrap();
     rl.set_helper(Some(h));
-    rl.bind_sequence(
-        KeyEvent::from('\t'),
-        EventHandler::Conditional(Box::new(TabEventHandler)),
-    );
     let home = env::var("HOME").unwrap();
     if rl.load_history(&format!("{}/.rush_history", home)).is_err() {
         println!("No previous history.");
