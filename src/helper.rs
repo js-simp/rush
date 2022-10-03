@@ -8,8 +8,8 @@ use rustyline::hint::HistoryHinter;
 #[derive(Helper, Validator, Hinter)]
 pub struct MyHelper {
     pub highlighter: MatchingBracketHighlighter,
-    // #[rustyline(Hinter)]
-    // pub hinter: HistoryHinter,
+    #[rustyline(Hinter)]
+    pub hinter: HistoryHinter,
 }
 impl Highlighter for MyHelper {
 
@@ -63,7 +63,7 @@ impl MyHelper {
     pub fn new() -> MyHelper {
         MyHelper{
             highlighter : MatchingBracketHighlighter::new(),
-            // hinter : HistoryHinter {}
+            hinter : HistoryHinter {}
         }
     }
 }
