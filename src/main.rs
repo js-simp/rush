@@ -1,6 +1,7 @@
 extern crate libc;
 extern crate rustyline;
 extern crate rustyline_derive;
+extern crate colored;
 
 use std::env;
 use std::os::unix::process::CommandExt;
