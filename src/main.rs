@@ -2,59 +2,36 @@ extern crate libc;
 extern crate rustyline;
 extern crate rustyline_derive;
 
-
-use std::borrow::Cow::{self, Borrowed, Owned};
-
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 use std::fs::File;
 
-use rustyline::Editor;
-use rustyline::hint::HistoryHinter;
-use rustyline::highlight::{Highlighter, MatchingBracketHighlighter};
-use rustyline_derive::{Helper, Hinter, Validator, Completer};
+use rustyline::{Editor, KeyEvent, EventHandler};
 
 mod colors;
 mod tokens;
+mod helper;
 
 use tokens::tokenize_commands;
 use tokens::Tokens;
+use helper::{MyHelper, TabEventHandler};
 
-#[derive(Helper, Hinter, Validator, Completer)]
-struct MyHelper {
-    highlighter: MatchingBracketHighlighter,
-    #[rustyline(Hinter)]
-    hinter: HistoryHinter,
-}
-impl Highlighter for MyHelper {
-    
-    fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
-        Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
-    }
-
-    fn highlight<'l>(&self, line: &'l str, pos: usize) -> Cow<'l, str> {
-        self.highlighter.highlight(line, pos)
-    }
-
-    fn highlight_char(&self, line: &str, pos: usize) -> bool {
-        self.highlighter.highlight_char(line, pos)
-    }
-}
 
 fn main() {
     unsafe {
         libc::signal(libc::SIGINT, libc::SIG_IGN);
         libc::signal(libc::SIGQUIT, libc::SIG_IGN);
     }
-    let h = MyHelper {
-        highlighter: MatchingBracketHighlighter::new(),
-        hinter: HistoryHinter {},
-    };
+    let h = helper::MyHelper::new();
     let mut last_exit_status = true;
     let mut rl = Editor::<MyHelper>::new().unwrap();
     rl.set_helper(Some(h));
+    rl.bind_sequence(
+        KeyEvent::from('\t'),
+        EventHandler::Conditional(Box::new(TabEventHandler)),
+    );
     let home = env::var("HOME").unwrap();
     if rl.load_history(&format!("{}/.rush_history", home)).is_err() {
         println!("No previous history.");
