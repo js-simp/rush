@@ -1,26 +1,33 @@
 extern crate libc;
 extern crate rustyline;
+extern crate rustyline_derive;
 
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 use std::fs::File;
-use rustyline::Editor;
+
+use rustyline::{Editor};
 
 mod colors;
 mod tokens;
+mod helper;
 
 use tokens::tokenize_commands;
 use tokens::Tokens;
+use helper::{MyHelper};
+
 
 fn main() {
     unsafe {
         libc::signal(libc::SIGINT, libc::SIG_IGN);
         libc::signal(libc::SIGQUIT, libc::SIG_IGN);
     }
+    let h = helper::MyHelper::new();
     let mut last_exit_status = true;
-    let mut rl = Editor::<()>::new().unwrap();
+    let mut rl = Editor::<MyHelper>::new().unwrap();
+    rl.set_helper(Some(h));
     let home = env::var("HOME").unwrap();
     if rl.load_history(&format!("{}/.rush_history", home)).is_err() {
         println!("No previous history.");
@@ -52,7 +59,7 @@ fn main() {
     }
 }
 
-fn read_command(rl: &mut Editor<()>, prompt_string: String) -> String {
+fn read_command(rl: &mut Editor<MyHelper>, prompt_string: String) -> String {
     let mut command_string = rl.readline(&prompt_string).unwrap();
 
     // this allows for multiline commands
